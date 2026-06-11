@@ -1,0 +1,36 @@
+name: Test deploy with pre-built zip file input
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Create a dummy theme zip file
+        run: |
+          mkdir -p /tmp/theme-build
+          echo '<html><body>Hello</body></html>' > /tmp/theme-build/index.hbs
+          echo '{"name":"test-theme","version":"1.0.0"}' > /tmp/theme-build/package.json
+          cd /tmp && zip -r theme.zip theme-build/
+          echo "Created zip at /tmp/theme.zip"
+          ls -la /tmp/theme.zip
+
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          api-url: 'https://fake-ghost-site.example.com'
+          api-key: '1234567890abcdef:1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef'
+          file: '/tmp/theme.zip'
+
+      - name: Assert action ran (expected to fail due to fake API)
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          if [ "$OUTCOME" = "skipped" ]; then
+            echo "FAIL: action was skipped, expected it to run"
+            exit 1
+          fi
+          echo "PASS: action ran (outcome=$OUTCOME, expected failure due to fake API)"
