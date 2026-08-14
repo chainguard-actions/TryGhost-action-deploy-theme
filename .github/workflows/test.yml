@@ -1,0 +1,20 @@
+name: Test
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - 'renovate/*'
+permissions:
+  contents: read
+jobs:
+  lint:
+    runs-on: ubuntu-18.04
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && !startsWith(github.head_ref, 'renovate/'))
+    steps:
+      - uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3
+      - uses: actions/setup-node@3235b876344d2a9aa001b8d1453c930bba69e610 # v3
+        with:
+          node-version: 12
+      - run: yarn
+      - run: yarn lint
