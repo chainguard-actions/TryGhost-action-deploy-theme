@@ -1,4 +1,4 @@
-name: Test basic deploy (invalid credentials)
+name: Test deploy with pre-built zip file
 on:
   workflow_dispatch:
 jobs:
@@ -7,22 +7,31 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
+      - name: Create a dummy theme zip file
+        run: |
+          mkdir -p /tmp/theme-test
+          echo '{"name":"test-theme","version":"1.0.0"}' > /tmp/theme-test/package.json
+          cd /tmp/theme-test && zip -r /tmp/theme.zip .
+          echo "Created dummy zip at /tmp/theme.zip"
+          ls -la /tmp/theme.zip
+
       - id: action
         uses: .
         continue-on-error: true
         with:
           api-url: 'https://invalid-ghost-site.example.com'
           api-key: '1234567890abcdef:1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef'
+          file: '/tmp/theme.zip'
 
-      - name: Assert action failed (not a missing-input error)
+      - name: Assert action failed at API stage (not file-reading stage)
         env:
           OUTCOME: ${{ steps.action.outcome }}
         run: |
           echo "outcome: $OUTCOME"
           # The action should fail because the API is unreachable/invalid,
-          # not because of missing required inputs.
+          # not because the zip file is missing or unreadable.
           if [ "$OUTCOME" = "success" ]; then
             echo "FAIL: expected action to fail with invalid credentials"
             exit 1
           fi
-          echo "PASS: action failed as expected with invalid credentials"
+          echo "PASS: action failed as expected (file was accepted, API call failed)"
