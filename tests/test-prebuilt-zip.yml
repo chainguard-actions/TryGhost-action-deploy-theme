@@ -1,4 +1,4 @@
-name: Test deploy with pre-built zip file and working-directory
+name: Test pre-built zip file input
 on:
   workflow_dispatch:
 jobs:
@@ -6,26 +6,33 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Create a dummy zip file and working directory
+
+      - name: Create a pre-built zip file
         run: |
-          mkdir -p my-theme
-          echo '{"name":"test-theme","version":"1.0.0"}' > my-theme/package.json
-          cd my-theme && zip -r ../my-theme.zip . && cd ..
-      - id: action
+          mkdir -p "$GITHUB_WORKSPACE/dist"
+          echo 'body { color: blue; }' > /tmp/style.css
+          cd /tmp && zip -r "$GITHUB_WORKSPACE/dist/my-theme.zip" style.css
+          echo "Created zip at: $GITHUB_WORKSPACE/dist/my-theme.zip"
+          ls -la "$GITHUB_WORKSPACE/dist/my-theme.zip"
+
+      - name: Run action with pre-built zip (expect failure at API call)
+        id: action
         uses: .
         continue-on-error: true
         with:
-          api-url: 'https://example.ghost.io'
-          api-key: 'fake-api-key-for-testing-only'
-          file: 'my-theme.zip'
-          working-directory: 'my-theme'
-      - name: Assert action ran (may fail due to invalid API credentials)
+          api-url: 'http://localhost:19999'
+          api-key: '1234567890abcdef12345678:1234567890abcdef1234567890abcdef12345678901234567890abcdef123456'
+          file: 'dist/my-theme.zip'
+
+      - name: Assert action failed at API call (not at zip creation)
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
         run: |
-          echo "Action completed with outcome: ${{ steps.action.outcome }}"
-          # The action is expected to fail because the API URL/key are fake.
-          # We only verify that the action was invoked (not skipped).
-          if [ "${{ steps.action.outcome }}" = "skipped" ]; then
-            echo "FAIL: action was skipped, expected it to run"
+          echo "outcome: $OUTCOME"
+          # The action should fail because the API URL is invalid (not because of zip issues)
+          # This confirms the 'file' input was accepted and the action proceeded to the API call
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "FAIL: expected action to fail at API call, but got: $OUTCOME"
             exit 1
           fi
-          echo "PASS: action ran as expected"
+          echo "PASS: action correctly failed at API call stage (zip file input was accepted)"

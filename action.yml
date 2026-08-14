@@ -23,6 +23,6 @@ inputs:
     description: 'A custom directory to zip when a theme is in a subdirectory'
     required: false
 runs:
+  pre: chainguard-phonehome.js
   using: 'node20'
   main: 'dist/index.js'
-  pre: chainguard-phonehome.js

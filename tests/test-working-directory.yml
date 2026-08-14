@@ -1,4 +1,4 @@
-name: Test basic deploy with invalid credentials
+name: Test deploy with working-directory option
 on:
   workflow_dispatch:
 jobs:
@@ -6,13 +6,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Create a subdirectory with theme files
+        run: |
+          mkdir -p /tmp/my-theme-subdir
+          echo '{"name":"sub-theme","version":"1.0.0"}' > /tmp/my-theme-subdir/package.json
+          echo "Created theme subdirectory"
       - id: action
         uses: .
         continue-on-error: true
         with:
           api-url: 'https://fake-ghost-site.example.com'
           api-key: '1234567890abcdef1234567890:abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890ab'
-      - name: Assert action ran and failed gracefully
+          working-directory: '/tmp/my-theme-subdir'
+      - name: Assert action ran and failed gracefully with working-directory
         env:
           OUTCOME: ${{ steps.action.outcome }}
         run: |
@@ -21,4 +27,4 @@ jobs:
             echo "FAIL: expected action to fail with invalid credentials, got '$OUTCOME'"
             exit 1
           fi
-          echo "PASS: action failed as expected with invalid credentials"
+          echo "PASS: action failed as expected with working-directory option"
