@@ -1,0 +1,45 @@
+name: Test custom theme name input
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install zip utility
+        run: |
+          if ! command -v zip &>/dev/null; then
+            apt-get update -qq && apt-get install -y -qq zip
+          fi
+
+      - name: Create a minimal package.json (theme-name input should override this)
+        run: |
+          echo '{"name":"default-theme-name","version":"1.0.0"}' > "$GITHUB_WORKSPACE/package.json"
+
+      - id: action
+        uses: .
+        with:
+          api-url: 'http://localhost:12345'
+          api-key: '1234567890abcdef12345678:1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef'
+          theme-name: 'my-custom-theme'
+        continue-on-error: true
+
+      - name: Assert action failed at upload (custom theme name was accepted)
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "FAIL: expected action to fail when uploading to invalid API URL, but got outcome: $OUTCOME"
+            exit 1
+          fi
+          echo "PASS: action correctly failed at upload (custom theme-name input was accepted)"
+
+      - name: Assert custom-named zip was created
+        run: |
+          if [ ! -f "$GITHUB_WORKSPACE/my-custom-theme.zip" ]; then
+            echo "FAIL: expected my-custom-theme.zip to be created but it was not found"
+            exit 1
+          fi
+          echo "PASS: my-custom-theme.zip was created using the custom theme-name input"

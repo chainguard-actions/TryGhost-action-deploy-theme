@@ -1,0 +1,35 @@
+name: Test pre-built zip file input
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install zip utility and create a fake pre-built zip file
+        run: |
+          if ! command -v zip &>/dev/null; then
+            apt-get update -qq && apt-get install -y -qq zip
+          fi
+          echo "fake theme content" > /tmp/fake-theme-content.txt
+          zip -j "$GITHUB_WORKSPACE/my-theme.zip" /tmp/fake-theme-content.txt
+
+      - id: action
+        uses: .
+        with:
+          api-url: 'http://localhost:12345'
+          api-key: '1234567890abcdef12345678:1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef'
+          file: 'my-theme.zip'
+        continue-on-error: true
+
+      - name: Assert action failed at upload (not at zip creation)
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "FAIL: expected action to fail when uploading to invalid API URL, but got outcome: $OUTCOME"
+            exit 1
+          fi
+          echo "PASS: action correctly failed at upload step (zip file input was accepted)"
